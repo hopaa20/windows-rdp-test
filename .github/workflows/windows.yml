@@ -18,7 +18,7 @@ jobs:
     - name: مصادقة ngrok
       run: .\ngrok\ngrok.exe authtoken $Env:NGROK_AUTH_TOKEN
       env:
-        NGROK_AUTH_TOKEN: ${{ 1qFCLcdfckpPT9A3rESm7rMDw0e_QFp4mb5VZsWya45mCHoT }}
+        NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
 
     - name: تفعيل RDP
       run: |
