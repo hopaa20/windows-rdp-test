@@ -6,61 +6,63 @@ on:
 jobs:
   windows:
     runs-on: windows-2025
+    timeout-minutes: 60
 
     steps:
-      - name: Detailed system information
+      - name: Windows information
         shell: powershell
         run: |
           Write-Host "========================================"
-          Write-Host "        WINDOWS RUNNER INFORMATION"
+          Write-Host "       WINDOWS SERVER 2025"
           Write-Host "========================================"
 
-          $computer = Get-CimInstance Win32_ComputerSystem
-          $cpu = Get-CimInstance Win32_Processor
-          $disk = Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='C:'"
           $os = Get-CimInstance Win32_OperatingSystem
+          $cpu = Get-CimInstance Win32_Processor
+          $ram = Get-CimInstance Win32_ComputerSystem
+          $disk = Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='C:'"
 
-          Write-Host ""
-          Write-Host "===== WINDOWS ====="
-          Write-Host "Product : $($os.Caption)"
+          Write-Host "OS      : $($os.Caption)"
           Write-Host "Version : $($os.Version)"
           Write-Host "Build   : $($os.BuildNumber)"
-          Write-Host "Arch    : $($os.OSArchitecture)"
-
-          Write-Host ""
-          Write-Host "===== CPU ====="
-          Write-Host "Name    : $($cpu.Name)"
+          Write-Host "CPU     : $($cpu.Name)"
           Write-Host "Cores   : $($cpu.NumberOfCores)"
-          Write-Host "Logical : $($cpu.NumberOfLogicalProcessors)"
+          Write-Host "Threads : $($cpu.NumberOfLogicalProcessors)"
+          Write-Host "RAM     : $([math]::Round($ram.TotalPhysicalMemory / 1GB,2)) GB"
+          Write-Host "Disk    : $([math]::Round($disk.Size / 1GB,2)) GB"
+          Write-Host "Free    : $([math]::Round($disk.FreeSpace / 1GB,2)) GB"
 
-          Write-Host ""
-          Write-Host "===== RAM ====="
-          $ramGB = [math]::Round($computer.TotalPhysicalMemory / 1GB, 2)
-          Write-Host "RAM     : $ramGB GB"
-
-          Write-Host ""
-          Write-Host "===== DISK ====="
-          $diskSizeGB = [math]::Round($disk.Size / 1GB, 2)
-          $diskFreeGB = [math]::Round($disk.FreeSpace / 1GB, 2)
-
-          Write-Host "Disk    : $diskSizeGB GB"
-          Write-Host "Free    : $diskFreeGB GB"
-
-          Write-Host ""
-          Write-Host "===== ENVIRONMENT ====="
-          Write-Host "Runner OS : $env:RUNNER_OS"
-          Write-Host "Runner Arch: $env:RUNNER_ARCH"
-          Write-Host "Runner Name: $env:RUNNER_NAME"
-
-          Write-Host ""
-          Write-Host "========================================"
-          Write-Host "              RUNNER READY"
-          Write-Host "========================================"
-
-      - name: Keep job running for testing
+      - name: Enable Remote Desktop service
         shell: powershell
         run: |
-          Write-Host "Runner is ready."
-          Write-Host "Waiting for 5 minutes..."
-          Start-Sleep -Seconds 300
-          Write-Host "Test completed."
+          Write-Host "Configuring Remote Desktop..."
+
+          Set-ItemProperty `
+            -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" `
+            -Name "fDenyTSConnections" `
+            -Value 0
+
+          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+
+          Set-Service -Name TermService -StartupType Automatic
+          Start-Service -Name TermService
+
+          Write-Host "Remote Desktop service:"
+          Get-Service TermService | Select-Object Status, StartType, Name
+
+          Write-Host "RDP configured locally."
+
+      - name: Keep runner alive
+        shell: powershell
+        run: |
+          Write-Host "========================================"
+          Write-Host "       RUNNER IS READY"
+          Write-Host "========================================"
+          Write-Host ""
+          Write-Host "Windows Server 2025 is running."
+          Write-Host "Remote Desktop is enabled locally."
+          Write-Host ""
+          Write-Host "The GitHub runner is temporary."
+          Write-Host "Session will end with this workflow."
+          Write-Host ""
+
+          Start-Sleep -Seconds 3300
