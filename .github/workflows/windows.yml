@@ -1,68 +1,31 @@
-name: Windows Test
+name: Windows RDP
 
 on:
   workflow_dispatch:
 
 jobs:
-  windows:
-    runs-on: windows-2025
-    timeout-minutes: 60
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 360
 
     steps:
-      - name: Windows information
-        shell: powershell
-        run: |
-          Write-Host "========================================"
-          Write-Host "       WINDOWS SERVER 2025"
-          Write-Host "========================================"
+    - name: تحميل ngrok
+      run: Invoke-WebRequest https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip -OutFile ngrok.zip
 
-          $os = Get-CimInstance Win32_OperatingSystem
-          $cpu = Get-CimInstance Win32_Processor
-          $ram = Get-CimInstance Win32_ComputerSystem
-          $disk = Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='C:'"
+    - name: فك ضغط ngrok
+      run: Expand-Archive ngrok.zip
 
-          Write-Host "OS      : $($os.Caption)"
-          Write-Host "Version : $($os.Version)"
-          Write-Host "Build   : $($os.BuildNumber)"
-          Write-Host "CPU     : $($cpu.Name)"
-          Write-Host "Cores   : $($cpu.NumberOfCores)"
-          Write-Host "Threads : $($cpu.NumberOfLogicalProcessors)"
-          Write-Host "RAM     : $([math]::Round($ram.TotalPhysicalMemory / 1GB,2)) GB"
-          Write-Host "Disk    : $([math]::Round($disk.Size / 1GB,2)) GB"
-          Write-Host "Free    : $([math]::Round($disk.FreeSpace / 1GB,2)) GB"
+    - name: مصادقة ngrok
+      run: .\ngrok\ngrok.exe authtoken $Env:NGROK_AUTH_TOKEN
+      env:
+        NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
 
-      - name: Enable Remote Desktop service
-        shell: powershell
-        run: |
-          Write-Host "Configuring Remote Desktop..."
+    - name: تفعيل RDP
+      run: |
+        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyTSConnections" -Value 0
+        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp' -name "UserAuthentication" -Value 1
+        Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force)
 
-          Set-ItemProperty `
-            -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" `
-            -Name "fDenyTSConnections" `
-            -Value 0
-
-          Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
-
-          Set-Service -Name TermService -StartupType Automatic
-          Start-Service -Name TermService
-
-          Write-Host "Remote Desktop service:"
-          Get-Service TermService | Select-Object Status, StartType, Name
-
-          Write-Host "RDP configured locally."
-
-      - name: Keep runner alive
-        shell: powershell
-        run: |
-          Write-Host "========================================"
-          Write-Host "       RUNNER IS READY"
-          Write-Host "========================================"
-          Write-Host ""
-          Write-Host "Windows Server 2025 is running."
-          Write-Host "Remote Desktop is enabled locally."
-          Write-Host ""
-          Write-Host "The GitHub runner is temporary."
-          Write-Host "Session will end with this workflow."
-          Write-Host ""
-
-          Start-Sleep -Seconds 3300
+    - name: بدء نفق ngrok
+      run: .\ngrok\ngrok.exe tcp 3389
