@@ -11,18 +11,50 @@ jobs:
       - name: System information
         shell: powershell
         run: |
-          Write-Host "Windows:"
-          Get-ComputerInfo | Select-Object WindowsProductName, WindowsVersion, OsArchitecture
+          Write-Host "========================================"
+          Write-Host "        WINDOWS RUNNER INFORMATION"
+          Write-Host "========================================"
 
-          Write-Host "CPU:"
-          Get-CimInstance Win32_Processor | Select-Object Name, NumberOfLogicalProcessors
+          Write-Host ""
+          Write-Host "===== WINDOWS ====="
+          Get-ComputerInfo |
+            Select-Object WindowsProductName, WindowsVersion, OsArchitecture
 
-          Write-Host "RAM:"
+          Write-Host ""
+          Write-Host "===== CPU ====="
+          Get-CimInstance Win32_Processor |
+            Select-Object Name, NumberOfLogicalProcessors
+
+          Write-Host ""
+          Write-Host "===== RAM ====="
           Get-CimInstance Win32_ComputerSystem |
-            Select-Object @{Name="RAM_GB";Expression={[math]::Round($_.TotalPhysicalMemory / 1GB,2)}}
+            Select-Object @{
+              Name="RAM_GB"
+              Expression={[math]::Round($_.TotalPhysicalMemory / 1GB,2)}
+            }
+
+          Write-Host ""
+          Write-Host "===== DISK ====="
+          Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='C:'" |
+            Select-Object DeviceID,
+              @{
+                Name="Size_GB"
+                Expression={[math]::Round($_.Size / 1GB,2)}
+              },
+              @{
+                Name="Free_GB"
+                Expression={[math]::Round($_.FreeSpace / 1GB,2)}
+              }
+
+          Write-Host ""
+          Write-Host "========================================"
+          Write-Host "              READY"
+          Write-Host "========================================"
 
       - name: Keep job running for testing
         shell: powershell
         run: |
           Write-Host "Runner is ready."
+          Write-Host "Waiting for 5 minutes..."
           Start-Sleep -Seconds 300
+          Write-Host "Test completed."
