@@ -8,47 +8,53 @@ jobs:
     runs-on: windows-2025
 
     steps:
-      - name: System information
+      - name: Detailed system information
         shell: powershell
         run: |
           Write-Host "========================================"
           Write-Host "        WINDOWS RUNNER INFORMATION"
           Write-Host "========================================"
 
+          $computer = Get-CimInstance Win32_ComputerSystem
+          $cpu = Get-CimInstance Win32_Processor
+          $disk = Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='C:'"
+          $os = Get-CimInstance Win32_OperatingSystem
+
           Write-Host ""
           Write-Host "===== WINDOWS ====="
-          Get-ComputerInfo |
-            Select-Object WindowsProductName, WindowsVersion, OsArchitecture
+          Write-Host "Product : $($os.Caption)"
+          Write-Host "Version : $($os.Version)"
+          Write-Host "Build   : $($os.BuildNumber)"
+          Write-Host "Arch    : $($os.OSArchitecture)"
 
           Write-Host ""
           Write-Host "===== CPU ====="
-          Get-CimInstance Win32_Processor |
-            Select-Object Name, NumberOfLogicalProcessors
+          Write-Host "Name    : $($cpu.Name)"
+          Write-Host "Cores   : $($cpu.NumberOfCores)"
+          Write-Host "Logical : $($cpu.NumberOfLogicalProcessors)"
 
           Write-Host ""
           Write-Host "===== RAM ====="
-          Get-CimInstance Win32_ComputerSystem |
-            Select-Object @{
-              Name="RAM_GB"
-              Expression={[math]::Round($_.TotalPhysicalMemory / 1GB,2)}
-            }
+          $ramGB = [math]::Round($computer.TotalPhysicalMemory / 1GB, 2)
+          Write-Host "RAM     : $ramGB GB"
 
           Write-Host ""
           Write-Host "===== DISK ====="
-          Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='C:'" |
-            Select-Object DeviceID,
-              @{
-                Name="Size_GB"
-                Expression={[math]::Round($_.Size / 1GB,2)}
-              },
-              @{
-                Name="Free_GB"
-                Expression={[math]::Round($_.FreeSpace / 1GB,2)}
-              }
+          $diskSizeGB = [math]::Round($disk.Size / 1GB, 2)
+          $diskFreeGB = [math]::Round($disk.FreeSpace / 1GB, 2)
+
+          Write-Host "Disk    : $diskSizeGB GB"
+          Write-Host "Free    : $diskFreeGB GB"
+
+          Write-Host ""
+          Write-Host "===== ENVIRONMENT ====="
+          Write-Host "Runner OS : $env:RUNNER_OS"
+          Write-Host "Runner Arch: $env:RUNNER_ARCH"
+          Write-Host "Runner Name: $env:RUNNER_NAME"
 
           Write-Host ""
           Write-Host "========================================"
-          Write-Host "              READY"
+          Write-Host "              RUNNER READY"
           Write-Host "========================================"
 
       - name: Keep job running for testing
