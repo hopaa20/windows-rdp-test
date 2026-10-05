@@ -28,4 +28,14 @@ jobs:
         Set-LocalUser -Name "runneradmin" -Password (ConvertTo-SecureString -AsPlainText "P@ssw0rd!" -Force)
 
     - name: بدء نفق ngrok
-      run: .\ngrok\ngrok.exe tcp 3389
+      run: |
+        Start-Process -FilePath ".\ngrok\ngrok.exe" -ArgumentList "tcp 3389" -NoNewWindow
+        Start-Sleep -Seconds 10
+        $tunnels = Invoke-RestMethod http://127.0.0.1:4040/api/tunnels
+        Write-Host "========================================"
+        Write-Host "عنوان الاتصال:"
+        Write-Host $tunnels.tunnels[0].public_url
+        Write-Host "اسم المستخدم: runneradmin"
+        Write-Host "كلمة المرور: P@ssw0rd!"
+        Write-Host "========================================"
+        Start-Sleep -Seconds 21600
